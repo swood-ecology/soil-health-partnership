@@ -89,7 +89,7 @@ interact_plot(as.cc.inter,pred=YrTrtFINAL,modx=treat_final_AMS,
               main.title = "Aggregate stability",  legend.main = "",modx.labels=c("Control","Treatment")) +
   theme_classic()
 
-interact_plot(ac.cc.inter,pred=YrTrtFINAL,modx=treat_final_AMS,
+interact_plot(ac.cc.inter,pred=YrTrt,modx=treat_final_AMS,
               interval=TRUE,width=0.8,
               partial.residuals=TRUE,jitter=0.3,colors=c("#00703c","#f3901d"),
               x.label = "\nYears of treatment", y.label = "Partial Residuals\n",
