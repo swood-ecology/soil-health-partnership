@@ -3,7 +3,7 @@ library(tidyverse)
 library(broom.mixed)
 library(tidybayes)
 
-load("~/Box Sync/Work/Code/shp/shp-data.RData")
+load("shp-data.RData")
 
 # Global options for running model
 options(mc.cores = parallel::detectCores())
@@ -18,12 +18,13 @@ data.sub.std <- data.sub %>%
     c.W = lagCrop_W - mean(lagCrop_W),
     c.Soy = lagCropCat_Soy - mean(lagCropCat_Soy),
     c.Wheat = lagCropCat_Wheat - mean(lagCropCat_Wheat),
-    s.yrs = (YrTrtFINAL - mean(YrTrtFINAL))/2*sd(YrTrtFINAL),
+    s.yr = (year - mean(year))/2*sd(year),
+    s.yrsInvolved = (YrTrt - mean(YrTrt)) / 2 * sd(YrTrt),
     s.clay = (Clay - mean(Clay))/2*sd(Clay),
     s.silt = (Silt - mean(Silt))/2*sd(Silt),
-    trtfinal = treat_final_AMS * YrTrtFINAL,
-    s.trtfinal = (trtfinal - mean(trtfinal))/2*sd(trtfinal),
-    year.farm = paste0(field_name,"_",year)
+    trtYrs = treat_final_AMS * year,
+    s.trtYrs = (trtYrs - mean(trtYrs))/2*sd(trtYrs),
+    farm = field_name
   )
 
 # Subset to cover crops
@@ -31,86 +32,40 @@ data.sub.cc <- data.sub.std %>%
   filter(TrtType == "Cover" | TrtType == "Cover/TILL")
 
 # List data for Stan model
-som.notstd.list <- list(
+som.cc.qr.list <- list(
   ## Data dimensions
   N=nrow(data.sub.cc),
-  K=5,
-  J=length(unique(data.sub.cc$year.farm)),
+  K=7,
+  J=length(unique(as.factor(data.sub.cc$farm))),
+  ## Data
+  y=data.sub.cc$som.final,
+  x=data.sub.cc[,c('c.AMS','s.yr','s.yrsInvolved','s.trtYrs','c.Soy','s.clay','s.silt')],
   ## Random effect
-  farmYears=as.integer(as.factor(data.sub.cc$year.farm)),
-  ## Independent variables
-  trtByYrs=as.numeric(data.sub.cc$trtfinal),
-  soy=as.numeric(data.sub.cc$lagCropCat_Soy),
-  wheat=as.numeric(data.sub.cc$lagCropCat_Wheat),
-  clay=data.sub.cc$Clay,
-  silt=data.sub.cc$Silt,
-  ## Dependent variable
-  y=data.sub.cc$som.final
-)
-som.list <- list(
-  ## Data dimensions
-  N=nrow(data.sub.std),
-  K=5,
-  J=length(unique(data.sub.std$year.farm)),
-  ## Random effect
-  farmYears=as.integer(as.factor(data.sub.std$year.farm)),
-  ## Independent variables
-  trtByYrs=as.numeric(data.sub.std$s.trtfinal),
-  soy=as.numeric(data.sub.std$c.Soy),
-  wheat=as.numeric(data.sub.std$c.Wheat),
-  clay=data.sub.std$s.clay,
-  silt=data.sub.std$s.silt,
-  ## Dependent variable
-  y=data.sub.std$som.final
-)
-som.cc.list <- list(
-  ## Data dimensions
-  N=nrow(data.sub.cc),
-  K=5,
-  J=length(unique(data.sub.cc$year.farm)),
-  ## Random effect
-  farmYears=as.integer(as.factor(data.sub.cc$year.farm)),
-  ## Independent variables
-  trtByYrs=as.numeric(data.sub.cc$s.trtfinal),
-  soy=as.numeric(data.sub.cc$c.Soy),
-  wheat=as.numeric(data.sub.cc$c.Wheat),
-  clay=data.sub.cc$s.clay,
-  silt=data.sub.cc$s.silt,
-  ## Dependent variable
-  y=data.sub.cc$som.final
+  farm=as.numeric(as.factor(data.sub.cc$farm))
 )
 
 ## Prior on clay for logged relationship: 0.001 (0.0002 = SD)
-som <- stan(file = "code/stan/model_inter.stan",
-               data = som.list,
+som.cc.qr <- stan(file = "code/stan/model_re_qr.stan",
+               data = som.cc.qr.list,
                iter = 4000,
                control=list(max_treedepth=15),
-               chains = 3) 
+               chains = 4) 
 
-som.cc <- stan(file = "code/stan/model_inter.stan",
-            data = som.cc.list,
-            iter = 4000,
-            control=list(max_treedepth=15),
-            chains = 3) 
+summary(som.cc.qr,pars=c('betaTrt','betaYrs','betaYrsInv','betaTrtYrs','betaSoy','betaClay','betaSilt'))
+print(som.cc.qr,pars=c('betaTrt','betaYrs','betaYrsInv','betaTrtYrs','betaSoy','betaClay','betaSilt'))
 
-som.cc.notstd <- stan(file = "code/stan/model_inter.stan",
-               data = som.notstd.list,
-               iter = 4000,
-               control=list(max_treedepth=15),
-               chains = 3) 
+rm(data.2019); rm(data.diff); rm(data.last_yr); rm(data.sub); rm(data.sub.cc)
+rm(data.sub.std); rm(data); rm(data.2018.new)
 
-summary(som.cc.notstd,pars=c('betaTrtByYrs','betaSoy','betaWheat','betaClay','betaSilt'))
-summary(som.cc,pars=c('betaTrtByYrs','betaSoy','betaWheat','betaClay','betaSilt'))
-print(som.cc,pars=c('betaTrtByYrs','betaSoy','betaWheat','betaClay','betaSilt'))
-
-summary(som,pars=c('betaTrtByYrs','betaSoy','betaWheat','betaClay','betaSilt'))
 
 ## Bayesian model plotting
-model.cc.plot <- tidy(som.cc,pars=c('betaTrtByYrs','betaSoy','betaWheat','betaClay','betaSilt')) %>%
+model.cc.plot <- tidy(som.cc.qr,pars=c('betaTrt','betaYrs','betaYrsInv','betaTrtYrs','betaSoy','betaClay','betaSilt')) %>%
   mutate(term = c(
-    betaTrtByYrs = "Treatment (1/0)\n x Years of treatment",
+    betaTrt="Treatment",
+    betaYrs="Years",
+    betaYrsInv="Years involved",
+    betaTrtYrs="Treatment years",
     betaSoy = "Soy (1/0)",
-    betaWheat = "Wheat (1/0)",
     betaClay = "Clay",
     betaSilt = "Silt"
   ))
@@ -125,13 +80,13 @@ dotwhisker::dwplot(model.cc.plot,
   theme(plot.title = element_text(face="bold"),
         legend.position = "none")
 
-y_pred_som <- rstan::extract(som.cc,pars='y_tilde')
+y_pred_som <- rstan::extract(som.cc.qr,pars='y_tilde')
 y_pred_som <- unlist(y_pred_som, use.names=FALSE)
 
 som.pp.data <- data.frame(
-  c(y_pred_som,som.list$y),
+  c(y_pred_som,som.cc.qr.list$y),
   c(rep("y_pred",length(y_pred_som)),
-    rep("y_obs",length(som.cc.list$y)))
+    rep("y_obs",length(som.cc.qr.list$y)))
 )
 names(som.pp.data) <- c("y","type")
 

@@ -1,15 +1,15 @@
-# Load packages
+#### LOAD PACKAGES ####
 library(tidyverse)  # General data manipulation
 library(lme4)       # Mixed-effects modeling
-library(lmerTest)   
-library(MuMIn)      # LME R2
-library(sjstats)    # Interaction plots
+library(lmerTest)   # P-values for lme objects
 library(table1)     # For summary table
+library(performance) # For model checking
+library(influence.ME) # For Cook's influence
 
-# Read data
+#### READ DATA ####
 load("~/Box Sync/Work/Code/shp/shp-data.RData")
 
-#### Summary statistics #####
+#### SUMMARY STATISTICS #####
 summary.dat <- data.sub %>%
   select(
     Sand:Clay, AggStab, ACESoilProtein, WHC, som.final, Respiration, ActiveCarbon, State, TrtType,
@@ -47,7 +47,8 @@ table1(~ som.final + Respiration + ActiveCarbon + ACESoilProtein + WHC + AggStab
 
 rm(summary.dat)
 
-#### Standardize variables for regression ####
+#### DATA MANIPULATION ####
+## Variable standardization
 data.sub.std <- data.sub %>%
   mutate(
     c.AMS = treat_final_AMS - mean(treat_final_AMS),
@@ -57,176 +58,213 @@ data.sub.std <- data.sub %>%
     c.Soy = lagCropCat_Soy - mean(lagCropCat_Soy),
     c.Wheat = lagCropCat_Wheat - mean(lagCropCat_Wheat),
     s.yrs = (YrTrtFINAL - mean(YrTrtFINAL)) / 2 * sd(YrTrtFINAL),
+    s.yr = (year-mean(year)) / 2 * sd(year),
     s.yrsInvolved = (YrTrt - mean(YrTrt)) / 2 * sd(YrTrt),
     s.clay = (Clay - mean(Clay)) / 2 * sd(Clay),
     s.silt = (Silt - mean(Silt)) / 2 * sd(Silt),
-    year.farm = paste0(field_name,"_",year)
+    year.farm = paste0(field_name, "_", year)
   )
 
-## FOR ALL DATA
-## Active Carbon
-# ac <- lmer(ActiveCarbon ~ treat_final_AMS:YrTrtFINAL + lagCropCat_Soy + lagCropCat_Wheat + Clay + Silt +
-#   (1 | field_name),
-# data = data.sub.std
-# )
-# ac %>% r.squaredGLMM()
-# ac %>% summary()
-
-# ## Respiration
-# resp <- lmer(Respiration ~ treat_final_AMS:YrTrtFINAL + lagCropCat_Soy + lagCropCat_Wheat + Clay + Silt +
-#   (1 | field_name),
-# data = data.sub.std
-# )
-# resp %>% r.squaredGLMM()
-# resp %>% summary()
-
-# ## Aggregate Stability
-# as <- lmer(AggStab ~ treat_final_AMS:YrTrtFINAL + lagCropCat_Soy + lagCropCat_Wheat + Clay + Silt +
-#   (1 | field_name),
-# data = data.sub.std
-# )
-# as %>% r.squaredGLMM()
-# as %>% summary()
-
-# ## Water Holding Capacity
-# whc <- lmer(WHC ~ treat_final_AMS:YrTrtFINAL + lagCropCat_Soy + lagCropCat_Wheat + Clay + Silt +
-#   (1 | field_name),
-# data = data.sub.std
-# )
-# whc %>% summary()
-# whc %>% r.squaredGLMM()
-
-# ## Protein
-# pro <- lmer(ACESoilProtein ~ treat_final_AMS:YrTrtFINAL + lagCropCat_Soy + lagCropCat_Wheat + Clay + Silt +
-#   (1 | field_name),
-# data = data.sub.std
-# )
-# pro %>% summary()
-# pro %>% r.squaredGLMM()
-
-
-# Subset to cover crops
+## Subset data to cover crops ##
 data.sub.cc <- data.sub.std %>%
   filter(TrtType == "Cover" | TrtType == "Cover/TILL")
+data.sub.cc$treat_final <- as.factor(data.sub.cc$treat_final)
 
-#### Active Carbon ####
-ac.cc <- lmer(ActiveCarbon ~ c.AMS:s.yrs + c.Soy + c.Wheat + s.clay + s.silt +
+# data.ly.cc <- data.last_yr %>%
+#   filter(TrtType == "Cover" | TrtType == "Cover/TILL")
+# data.ly.cc$treat_final <- as.factor(data.ly.cc$treat_final)
+
+#### 1. ALL DATA MODELS ####
+#### 1a. Active Carbon ####
+# Fit initial model
+ac <- lmer(ActiveCarbon ~ c.AMS*s.yrsInvolved + c.Soy + s.silt + s.clay + (1|SHPID_Strip),
+           data = data.sub.std %>%
+             filter(row_number() != 768,
+                    row_number() != 769))
+# Check model
+ac %>% r2()
+summary(ac)
+ac %>% check_model()
+
+# Panel data model
+plm(ActiveCarbon ~ c.AMS*s.yrsInvolved + c.Soy + s.silt + s.clay,
+    data=data.sub.std, model = "random",
+    index=c("SHPID_Strip")
+) %>% 
+  summary()
+
+#### 1b. Aggregate Stability ####
+# Fit initial model
+as <- lmer(AggStab ~ c.AMS*s.yrsInvolved + c.Soy + s.silt + s.clay +
   (1 | field_name),
-data = data.sub.cc
+  data = data.sub.std
 )
-ac.cc.inter <- lmer(ActiveCarbon ~ treat_final_AMS:YrTrt + lagCropCat_Soy + lagCropCat_Wheat + Clay + Silt +
-                      (1 | field_name),
-                    data = data.sub.cc
-)
-ac.cc.inter %>% r.squaredGLMM()
-ac.cc.inter %>% summary()
+# Check model
+as %>% r2()
+as %>% summary()
+as %>% check_model() 
 
-ggplot(data.sub.cc,aes(y=ActiveCarbon, x=YrTrt,color=treat_final)) + geom_jitter(width=0.3) + 
-  geom_smooth(method="lm") + theme_classic()
-
-
-#### Respiration ####
-resp.cc.inter <- lmer(Respiration ~ treat_final_AMS:YrTrtFINAL + lagCropCat_Soy + lagCropCat_Wheat + Clay + Silt +
+#### 1c. Protein ####
+pro <- lmer(log(ACESoilProtein) ~ c.AMS*s.yrsInvolved + c.Soy + s.silt + s.clay +
   (1 | field_name),
-data = data.sub.cc
+data = data.sub.std
 )
-resp.cc.inter %>% r.squaredGLMM()
-resp.cc.inter %>% summary()
+pro %>% r2()
+pro %>% summary()
+pro %>% check_model()
 
-
-#### Aggregate Stability ####
-as.cc <- lmer(AggStab ~ c.AMS:s.yrs + c.Soy + c.Wheat + s.clay + s.silt +
+#### 1d. Respiration ####
+data.sub.std$Respiration <- data.sub.std$Respiration + 0.000001
+resp <- lmer(log(Respiration) ~ c.AMS*s.yrsInvolved + c.Soy + s.silt + s.clay +
   (1 | field_name),
-data = data.sub.cc %>% filter(AggStab < 75)
+data = data.sub.std %>%
+  filter(row_number() != 449)
 )
-as.cc.inter <- lmer(AggStab ~ treat_final_AMS:YrTrtFINAL + lagCropCat_Soy + lagCropCat_Wheat + Clay + Silt +
-                      (1 | field_name),
-                    data = data.sub.cc %>% filter(AggStab < 75)
-)
-as.cc.inter %>% r.squaredGLMM()
-as.cc.inter %>% summary()
+resp %>% r.squaredGLMM()
+resp %>% summary()
+resp %>% check_model()
 
-ggplot(data.sub.cc,aes(y=AggStab, x=YrTrt,color=treat_final)) + geom_jitter(width=0.3) + 
-  geom_smooth(method="lm") + theme_classic()
-
-
-#### Water Holding Capacity ####
-whc.cc <- lmer(WHC ~ c.AMS:s.yrs + c.Soy + c.Wheat + s.clay + s.silt +
+#### 1e. Water Holding Capacity ####
+whc <- lmer(WHC ~ c.AMS+s.yrsInvolved + c.Soy + s.silt + s.clay +
   (1 | field_name),
-data = data.sub.cc
+data = data.sub.std
 )
-whc.cc.inter <- lmer(WHC ~ treat_final_AMS:YrTrtFINAL + lagCropCat_Soy + lagCropCat_Wheat + Clay + Silt +
-                      (1 | field_name),
-                    data = data.sub.cc
+whc %>% r2()
+whc %>% summary()
+whc %>% check_model()
+
+#### 2. COVER CROP MODELS ####
+#### 2a. Active Carbon ####
+# Run model for all data
+ac.cc.all <- lmer(ActiveCarbon ~ c.AMS*s.yr + s.yrsInvolved + s.silt + s.clay + c.Soy + 
+       (1 | field_name),
+     data = data.sub.cc)
+summary(ac.cc.all)
+r2(ac.cc.all)
+
+ac.cc <- list()
+for(i in 2015:2019){
+  ac.cc[[i]] <- lmer(ActiveCarbon ~ c.AMS+s.yrsInvolved + s.silt + s.clay + c.Soy +
+                     (1 | field_name),
+                   data = data.sub.cc %>%
+                     filter(year==i)
+  ) 
+}
+
+ac.cc[[2015]] %>% r2()
+ac.cc[[2015]] %>% summary()
+ac.cc[[2015]] %>% check_model()
+
+#### 2b. Aggregate Stability ####
+data.sub.cc$AggStab <- data.sub.cc$AggStab + 0.00001
+as.cc.all <- lmer(log(AggStab) ~ c.AMS*s.yr+s.yrsInvolved + c.Soy + s.clay + s.silt +
+  (1 | field_name), data = data.sub.cc %>% filter(AggStab < 75,
+                                                  row_number() != 210)
 )
-whc.cc %>% summary()
-whc.cc %>% r.squaredGLMM()
+as.cc.all %>% r2()
+as.cc.all %>% summary()
+as.cc.all %>% check_model()
 
-ggplot(data.sub.cc,aes(y=WHC, x=YrTrt,color=treat_final)) + geom_jitter(width=0.3) + 
-  geom_smooth(method="lm") + theme_classic()
+as.cc <- list()
+for(i in 2015:2019){
+  as.cc[[i]] <- lmer(log(AggStab) ~ c.AMS+s.yrsInvolved + s.silt + s.clay + c.Soy+
+                       (1 | field_name),
+                     data = data.sub.cc %>%
+                       filter(AggStab < 75,
+                              row_number() != 210,
+                              year==i)
+  ) 
+}
 
 
-#### Protein #####
-pro.cc.inter <- lmer(ACESoilProtein ~ treat_final_AMS:YrTrtFINAL + lagCropCat_Soy + lagCropCat_Wheat + Clay + Silt +
-                 (1 | field_name),
-               data = data.sub.cc
+#### 2c. Protein #####
+# Model across all years
+pro.cc.all <- lmer(log(ACESoilProtein) ~ c.AMS*s.yr + s.yrsInvolved + c.Soy + s.silt + s.clay +
+                  (1 | field_name),
+                data = data.sub.cc 
 )
-pro.cc.inter %>% summary()
-pro.cc.inter %>% r.squaredGLMM()
 
-#### Soil organic matter ####
-som.cc.inter <- lmer(log(som.final) ~ treat_final_AMS:YrTrtFINAL + lagCropCat_Soy + lagCropCat_Wheat + Clay + Silt +
-                       (1 | year.farm),
+pro.cc.all %>% r2()
+pro.cc.all %>% summary()
+pro.cc.all %>% check_model()
+
+# Model for each year
+pro.cc <- list()
+for(i in 2015:2019){
+  pro.cc[[i]] <- lmer(log(ACESoilProtein) ~ c.AMS+s.yrsInvolved + s.silt + s.clay + c.Soy+
+                       (1 | field_name),
+                     data = data.sub.cc %>%
+                       filter(year==i)
+  ) 
+}
+
+
+#### 2d. Respiration ####
+resp.cc.all <- lmer(Respiration ~ c.AMS*s.yr + s.yrsInvolved + c.Soy + s.silt + s.clay +
+  (1 | field_name),
+data = data.sub.cc %>%
+  filter(row_number() != 1285)
+)
+resp.cc.all %>% r2()
+resp.cc.all %>% summary()
+resp.cc.all %>% check_model()
+
+resp.cc <- list()
+for(i in 2015:2019){
+  resp.cc[[i]] <- lmer(Respiration ~ c.AMS + s.yrsInvolved +s.silt + s.clay + c.Soy +
+                        (1 | field_name),
+                      data = data.sub.cc %>%
+                        filter(year==i,
+                               row_number() != 1285)
+  ) 
+}
+
+
+#### 2e. Water Holding Capacity ####
+whc.cc.all <- lmer(WHC ~ c.AMS*s.yr+s.yrsInvolved+c.Soy+s.clay + s.silt +
+  (1 | field_name),
+data = data.sub.cc 
+)
+whc.cc.all %>% summary()
+whc.cc.all %>% r2()
+whc.cc.all %>% check_model()
+
+whc.cc <- list()
+for(i in 2015:2019){
+  whc.cc[[i]] <- lmer(WHC ~ c.AMS+s.yrsInvolved + s.silt + s.clay + c.Soy+
+                       (1 | field_name),
+                     data = data.sub.cc %>%
+                       filter(year==i)
+  ) 
+}
+
+#### 2f. Soil organic matter ####
+som.cc.all <- lmer(log(som.final) ~ c.AMS*s.yr+s.yrsInvolved + s.silt + s.clay + c.Soy+
+                       (1 | field_name),
                      data = data.sub.cc
 )
+som.cc.all %>% summary()
+som.cc.all %>% r2()
+som.cc.all %>% check_model()
 
-ggplot(data.sub.cc,aes(y=som.final, x=YrTrt,color=treat_final)) + geom_jitter(width=0.3) + 
-  geom_smooth(method="lm") + theme_classic()
+som.cc <- list()
+for(i in 2015:2019){
+  som.cc[[i]] <- lmer(log(som.final) ~ c.AMS+s.yrsInvolved + s.silt + s.clay + c.Soy+
+                        (1 | field_name),
+                      data = data.sub.cc %>%
+                        filter(year==i)
+  ) 
+}
 
 
-interactions::interact_plot(som.cc.inter,pred=YrTrtFINAL,modx=treat_final_AMS,
-              interval=TRUE,width=0.5,
-              partial.residuals=TRUE,jitter=0.3,colors=c("#00703c","#f3901d"),
-              x.label = "\nYears of treatment", y.label = "Partial Residuals\n",
-              main.title = "Soil organic matter",  legend.main = "",modx.labels=c("Control","Treatment")) +
-  theme_classic()
-
-
-som.cc.inter %>% tidy()
-lmer(log(som.final) ~ treat_final_AMS:YrTrtFINAL + Clay + Silt +
-                            (1 | year.farm),
-                          data = data.sub.cc) %>% r.squaredGLMM()
-
-som.plot <- tidy(som.cc.inter) %>%
-  dotwhisker::relabel_predictors(c(
-    `c.AMS:s.yrs` = "Treatment (1/0)\nx Years of treatment",
-    c.Soy = "Soy (1/0)",
-    c.Wheat = "Wheat (1/0)",
-    s.clay = "Clay",
-    s.silt = "Silt"
-  )) %>%
-  slice(1:7) %>%
-  filter(term != "(Intercept)",
-         term != "sd__(Intercept)")
-
-dotwhisker::dwplot(som.plot,
-       vline = geom_vline(xintercept = 0, colour = "#7e6a65", linetype = 2)
-) + 
-  xlab("\nCoefficient Estimate") + ylab("") +
-  ggtitle("Soil organic matter") +
-  scale_color_manual(values=c("#00703c")) +
-  theme_classic() + 
-  theme(plot.title = element_text(face="bold"),
-        legend.position = "none")
-
-########### EXPORT DATA #######
-
+#### EXPORT DATA ####
 rm(data)
 rm(data.2018.new)
 rm(data.2019)
 rm(data.last_yr)
-rm(data.redo)
 rm(data.sub)
 rm(data.sub.cc)
 rm(data.sub.std)
+rm(data.diff)
+rm(i)
 save.image("~/Box Sync/Work/Code/shp/shp-models.RData")

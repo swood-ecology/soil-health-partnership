@@ -193,6 +193,15 @@ data <- data %>%
     )
   )
 
+# Does the sample have a baseline?
+data <- data %>%
+  group_by(field_name) %>%
+  mutate(
+    hasBaseline = ifelse(
+      (str_detect(field_name,"2014") && min(year) <= 2015), FALSE, TRUE
+    )
+  ) 
+
 # Filter out observations
 ## 1. has SOM data
 ## 2. has a lagged crop
@@ -201,8 +210,9 @@ data <- data %>%
 data.sub <- data %>%
   filter(!is.na(SOMnew),
          !is.na(lagCrop),
-         (treat_final == "AMS" | treat_final == "Control"),
-         year - YRStrtSHP > 0)
+         (treat_final == "AMS" | treat_final == "Control")) %>%
+  group_by(SHPID_Strip) %>%
+  filter(first(year) != last(year))
 
 # Generate dummy variables for categories
 data.sub <- dummy_cols(data.sub,
@@ -216,7 +226,7 @@ rotate <- rotate %>%
       TRUE ~ FALSE
     )  
   )
-  
+
 # Add crop rotation system
 data.sub <- left_join(data.sub, 
                rotate %>%
@@ -237,14 +247,28 @@ data.sub <- data.sub %>%
   mutate(som.final = ifelse(is.na(som.redo) == FALSE, som.redo, SOMnew)) %>%
   select(-som.redo)
 
-# # Subset SOM data for last year of each farm
-# last_yr <- aggregate(year ~ SHPID_Strip_Crop, FUN="max",data=data.sub)
-# names(last_yr) <- c("SHPID_Strip_Crop","year_max")
-# 
-# data.last_yr <- data.sub %>%
-#   full_join(last_yr, by="SHPID_Strip_Crop") %>% 
-#   group_by("SHPID_Strip_Crop") %>% 
-#   filter(year == year_max)
-# rm(last_yr)
+rm(data.redo)
+
+# Subset SOM data for last year of each farm
+last_yr <- aggregate(year ~ SHPID_Strip_Crop, FUN="max",data=data.sub)
+names(last_yr) <- c("SHPID_Strip_Crop","year_max")
+
+data.last_yr <- data.sub %>%
+  full_join(last_yr, by="SHPID_Strip_Crop") %>%
+  group_by("SHPID_Strip_Crop") %>%
+  filter(year == year_max)
+rm(last_yr)
+
+# Data of the difference between first and last year
+data.diff <- data.sub %>%
+  group_by(SHPID_Strip) %>%
+  mutate(
+    ac.diff = last(ActiveCarbon) - first(ActiveCarbon),
+    as.diff = last(AggStab) - first(AggStab),
+    whc.diff = last(WHC) - first(WHC),
+    som.diff = last(som.final) - first(som.final),
+    resp.diff = last(Respiration) - first(Respiration),
+    pro.diff = last(ACESoilProtein) - first(ACESoilProtein)
+  )
 
 save.image("~/Box Sync/Work/Code/shp/shp-data.RData")

@@ -1,37 +1,65 @@
-# Load packages
+#### Load packages ####
 library(tidyverse)    # encodes ggplot2
 library(soiltexture)  # for plotting texture triangles
-library(readxl)
+library(readxl)       # For reading .xls
 library(dwplot)       # For regression dot and whisker plots
 library(dotwhisker)   # For regression dot and whisker plots
 library(broom.mixed)
 library(interactions) # For interaction plots
 
-# Load data
+#### Load data ####
 load("~/Box Sync/Work/Code/shp/shp-data.RData")
 load("~/Box Sync/Work/Code/shp/shp-models.RData")
 spatial <- read_excel("raw-data/Coordinates of SHP sites_9_7_2019.xlsx")
 
-# Figure 1
+#### Figure 1 ####
 inner_join(spatial, 
            data.sub %>% 
              select(field_name,TrtType) %>% 
              unique()
-           ) %>%
+) %>%
   write.csv("synthesized-data/mapping_data.csv")
 
-# Figure 2
+#### Figure 2 ####
+plot.dw <- function(model.data,title){
+  x <- tibble()
+  for(i in 2015:2019){
+    model.data[[i]] %>% broom.mixed::tidy() %>% filter(term == "c.AMS") %>% mutate(model = i) -> temp
+    x <- rbind(x,temp)
+  }
+  dotwhisker::dwplot(x) + theme_classic() + ggtitle(title) +
+    scale_color_manual(values=c("#00703c","#23487a","#90214a","#f3901d","#49a942"),
+                       name="Year") +
+    xlab("\nEffect of experimental treatment") +
+    geom_vline(xintercept=0,linetype="dotted") +
+    theme(
+      axis.text.y = element_blank(),
+      axis.text.x = element_text(size=12),
+      axis.title.y = element_text(size=13),
+      axis.title.x = element_text(size=13)
+    )
+}
+
+plot.dw(ac.cc, "Active Carbon")
+plot.dw(resp.cc, "Respiration")
+plot.dw(as.cc, "Aggregate Stability")
+plot.dw(som.cc, "Soil organic matter")
+
+
+#### Figure S4 ####
 # Labels for y-axis
 pred.labs <- c(
-  `c.AMS:s.yrs` = "Treatment (1/0)\nx Years of treatment",
+  c.AMS = "Treatment (1/0)",
+  s.yr = "Year of sample",
+  s.yrsInvolved = "Number of years in project",
   c.Soy = "Soy (1/0)",
-  c.Wheat = "Wheat (1/0)",
   s.clay = "Clay",
-  s.silt = "Silt"
+  s.silt = "Silt",
+  `c.AMS:s.yr` = "Interaction of treatment and year"
 )
 
-## Aggregate stability  
-as.plot <- tidy(as.cc) %>%
+#### Aggregate stability ####
+as.plot <- tidy(as.cc.all) %>%
   relabel_predictors(pred.labs) %>%
   slice(1:7) %>%
   filter(term != "(Intercept)",
@@ -47,8 +75,8 @@ dwplot(as.plot,
   theme(plot.title = element_text(face="bold"),
         legend.position = "none")
 
-## Active Carbon  
-ac.plot <- tidy(ac.cc) %>%
+#### Active Carbon ####
+ac.plot <- tidy(ac.cc.all) %>%
   relabel_predictors(pred.labs) %>%
   slice(1:7) %>%
   filter(term != "(Intercept)",
@@ -64,8 +92,8 @@ dwplot(ac.plot,
   theme(plot.title = element_text(face="bold"),
         legend.position = "none")
 
-## Water holding capacity 
-whc.plot <- tidy(whc.cc) %>%
+#### Water holding capacity ####
+whc.plot <- tidy(whc.cc.all) %>%
   relabel_predictors(pred.labs) %>%
   slice(1:7) %>%
   filter(term != "(Intercept)",
@@ -81,31 +109,25 @@ dwplot(whc.plot,
   theme(plot.title = element_text(face="bold"),
         legend.position = "none")
 
-# Figure 3
-interact_plot(as.cc.inter,pred=YrTrtFINAL,modx=treat_final_AMS,
-              interval=TRUE,width=0.8,
-              partial.residuals=TRUE,jitter=0.3,colors=c("#00703c","#f3901d"),
-              x.label = "\nYears of treatment", y.label = "Partial Residuals\n",
-              main.title = "Aggregate stability",  legend.main = "",modx.labels=c("Control","Treatment")) +
-  theme_classic()
+#### Protein ####
+pro.plot <- tidy(pro.cc.all) %>%
+  relabel_predictors(pred.labs) %>%
+  slice(1:7) %>%
+  filter(term != "(Intercept)",
+         term != "sd__(Intercept)")
 
-interact_plot(ac.cc.inter,pred=YrTrt,modx=treat_final_AMS,
-              interval=TRUE,width=0.8,
-              partial.residuals=TRUE,jitter=0.3,colors=c("#00703c","#f3901d"),
-              x.label = "\nYears of treatment", y.label = "Partial Residuals\n",
-              main.title = "Active carbon",  legend.main = "",modx.labels=c("Control","Treatment")) +
-  theme_classic()
+dwplot(pro.plot,
+       vline = geom_vline(xintercept = 0, colour = "#7e6a65", linetype = 2)
+) + 
+  xlab("\nCoefficient Estimate") + ylab("") +
+  ggtitle("ACE Soil Protein Index") +
+  scale_color_manual(values=c("#00703c")) +
+  theme_classic() + 
+  theme(plot.title = element_text(face="bold"),
+        legend.position = "none")
 
-interact_plot(whc.cc.inter,pred=YrTrtFINAL,modx=treat_final_AMS,
-              interval=TRUE,width=0.8,
-              partial.residuals=TRUE,jitter=0.3,colors=c("#00703c","#f3901d"),
-              x.label = "\nYears of treatment", y.label = "Partial Residuals\n",
-              main.title = "Water holding capacity",  legend.main = "",modx.labels=c("Control","Treatment")) +
-  theme_classic()
-
-# Figure SX
-## Respiration  
-resp.plot <- tidy(resp.cc) %>%
+#### Respiration ####
+resp.plot <- tidy(resp.cc.all) %>%
   relabel_predictors(pred.labs) %>%
   slice(1:7) %>%
   filter(term != "(Intercept)",
@@ -121,22 +143,23 @@ dwplot(resp.plot,
   theme(plot.title = element_text(face="bold"),
         legend.position = "none")
 
-## Protein 
-pro.plot <- tidy(pro.cc) %>%
+#### Soil organic matter ####
+som.plot <- tidy(som.cc.all) %>%
   relabel_predictors(pred.labs) %>%
   slice(1:7) %>%
   filter(term != "(Intercept)",
          term != "sd__(Intercept)")
 
-dwplot(pro.plot,
+dwplot(som.plot,
        vline = geom_vline(xintercept = 0, colour = "#7e6a65", linetype = 2)
 ) + 
   xlab("\nCoefficient Estimate") + ylab("") +
-  ggtitle("Soil Protein Index") +
+  ggtitle("Soil organic matter") +
   scale_color_manual(values=c("#00703c")) +
   theme_classic() + 
   theme(plot.title = element_text(face="bold"),
         legend.position = "none")
+
 
 
 #################### NOT USED ##########################
