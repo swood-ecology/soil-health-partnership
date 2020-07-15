@@ -27,16 +27,19 @@ plot.dw <- function(model.data,title){
     model.data[[i]] %>% broom.mixed::tidy() %>% filter(term == "c.AMS") %>% mutate(model = i) -> temp
     x <- rbind(x,temp)
   }
+
   dotwhisker::dwplot(x) + theme_classic() + ggtitle(title) +
     scale_color_manual(values=c("#00703c","#23487a","#90214a","#f3901d","#49a942"),
-                       name="Year") +
-    xlab("\nEffect of experimental treatment") +
+                       name="Year",
+                       breaks=c("2019","2018","2017","2016","2015")) +
+    xlab("\nStd. coefficient of experimental treatment") +
     geom_vline(xintercept=0,linetype="dotted") +
     theme(
       axis.text.y = element_blank(),
       axis.text.x = element_text(size=12),
       axis.title.y = element_text(size=13),
-      axis.title.x = element_text(size=13)
+      axis.title.x = element_text(size=13),
+      legend.text = element_text(size = 11)
     )
 }
 

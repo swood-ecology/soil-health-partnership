@@ -7,13 +7,13 @@ library(performance) # For model checking
 library(influence.ME) # For Cook's influence
 
 #### READ DATA ####
-load("~/Box Sync/Work/Code/shp/shp-data.RData")
+load("shp-data.RData")
 
 #### SUMMARY STATISTICS #####
 summary.dat <- data.sub %>%
+  filter(TrtType == "Cover" | TrtType == "Cover/TILL") %>%
   select(
-    Sand:Clay, AggStab, ACESoilProtein, WHC, som.final, Respiration, ActiveCarbon, State, TrtType,
-    lagCrop, YrTrt
+    Sand:Clay, AggStab, ACESoilProtein, WHC, som.final, Respiration, ActiveCarbon, State
   )
 
 my.render.cont <- function(x) {
@@ -21,27 +21,16 @@ my.render.cont <- function(x) {
     "Mean (SD)" = sprintf("%s (&plusmn; %s)", MEAN, SD)
   ))
 }
-my.render.cat <- function(x) {
-  c("", sapply(stats.default(x), function(y) {
-    with(
-      y,
-      sprintf("%d (%0.0f %%)", FREQ, PCT)
-    )
-  }))
-}
 
 label(summary.dat$som.final) <- "Organic Matter (%)"
 label(summary.dat$ActiveCarbon) <- "Active Carbon"
 label(summary.dat$ACESoilProtein) <- "Soil Protein"
 label(summary.dat$WHC) <- "Water Holding Capacity"
 label(summary.dat$AggStab) <- "Aggregate Stability"
-label(summary.dat$YrTrt) <- "Years of Treatment"
-label(summary.dat$TrtType) <- "Type of Treatment"
 
-table1(~ som.final + Respiration + ActiveCarbon + ACESoilProtein + WHC + AggStab + Sand + Silt + Clay + YrTrt + TrtType | State,
+table1(~ som.final + Respiration + ActiveCarbon + ACESoilProtein + WHC + AggStab + Sand + Silt + Clay | State,
   data = summary.dat,
   render.continuous = my.render.cont,
-  render.categorical = my.render.cat,
   overall = NULL
 )
 
@@ -69,10 +58,6 @@ data.sub.std <- data.sub %>%
 data.sub.cc <- data.sub.std %>%
   filter(TrtType == "Cover" | TrtType == "Cover/TILL")
 data.sub.cc$treat_final <- as.factor(data.sub.cc$treat_final)
-
-# data.ly.cc <- data.last_yr %>%
-#   filter(TrtType == "Cover" | TrtType == "Cover/TILL")
-# data.ly.cc$treat_final <- as.factor(data.ly.cc$treat_final)
 
 #### 1. ALL DATA MODELS ####
 #### 1a. Active Carbon ####
@@ -151,8 +136,8 @@ for(i in 2015:2019){
   ) 
 }
 
-ac.cc[[2015]] %>% r2()
-ac.cc[[2015]] %>% summary()
+ac.cc[[2019]] %>% r2()
+ac.cc[[2019]] %>% summary()
 ac.cc[[2015]] %>% check_model()
 
 #### 2b. Aggregate Stability ####
@@ -176,6 +161,10 @@ for(i in 2015:2019){
   ) 
 }
 
+as.cc[[2019]] %>% r2()
+as.cc[[2019]] %>% summary()
+as.cc[[2015]] %>% check_model()
+
 
 #### 2c. Protein #####
 # Model across all years
@@ -198,6 +187,10 @@ for(i in 2015:2019){
   ) 
 }
 
+pro.cc[[2019]] %>% r2()
+pro.cc[[2019]] %>% summary()
+pro.cc[[2015]] %>% check_model()
+
 
 #### 2d. Respiration ####
 resp.cc.all <- lmer(Respiration ~ c.AMS*s.yr + s.yrsInvolved + c.Soy + s.silt + s.clay +
@@ -219,6 +212,10 @@ for(i in 2015:2019){
   ) 
 }
 
+resp.cc[[2018]] %>% r2()
+resp.cc[[2019]] %>% summary()
+resp.cc[[2015]] %>% check_model()
+
 
 #### 2e. Water Holding Capacity ####
 whc.cc.all <- lmer(WHC ~ c.AMS*s.yr+s.yrsInvolved+c.Soy+s.clay + s.silt +
@@ -237,6 +234,10 @@ for(i in 2015:2019){
                        filter(year==i)
   ) 
 }
+whc.cc[[2019]] %>% r2()
+whc.cc[[2019]] %>% summary()
+whc.cc[[2015]] %>% check_model()
+
 
 #### 2f. Soil organic matter ####
 som.cc.all <- lmer(log(som.final) ~ c.AMS*s.yr+s.yrsInvolved + s.silt + s.clay + c.Soy+
@@ -255,6 +256,9 @@ for(i in 2015:2019){
                         filter(year==i)
   ) 
 }
+som.cc[[2019]] %>% r2()
+som.cc[[2019]] %>% summary()
+som.cc[[2015]] %>% check_model()
 
 
 #### EXPORT DATA ####
