@@ -7,6 +7,10 @@ library(dotwhisker)   # For regression dot and whisker plots
 library(broom.mixed)
 library(interactions) # For interaction plots
 
+library(sjPlot)
+library(sjmisc)
+
+
 #### Load data ####
 load("~/Box Sync/Work/Code/shp/shp-data.RData")
 load("~/Box Sync/Work/Code/shp/shp-models.RData")
@@ -20,11 +24,12 @@ inner_join(spatial,
 ) %>%
   write.csv("synthesized-data/mapping_data.csv")
 
+
 #### Figure 2 ####
 plot.dw <- function(model.data,title){
   x <- tibble()
   for(i in 2015:2019){
-    model.data[[i]] %>% broom.mixed::tidy() %>% filter(term == "c.AMS") %>% mutate(model = i) -> temp
+    model.data[[i]] %>% broom.mixed::tidy() %>% filter(term == "CC") %>% mutate(model = i) -> temp
     x <- rbind(x,temp)
   }
 
@@ -32,7 +37,7 @@ plot.dw <- function(model.data,title){
     scale_color_manual(values=c("#00703c","#23487a","#90214a","#f3901d","#49a942"),
                        name="Year",
                        breaks=c("2019","2018","2017","2016","2015")) +
-    xlab("\nStd. coefficient of experimental treatment") +
+    xlab("\nCover crop effect") +
     geom_vline(xintercept=0,linetype="dotted") +
     theme(
       axis.text.y = element_blank(),
@@ -43,26 +48,28 @@ plot.dw <- function(model.data,title){
     )
 }
 
-plot.dw(ac.cc, "Active Carbon")
-plot.dw(resp.cc, "Respiration")
-plot.dw(as.cc, "Aggregate Stability")
-plot.dw(som.cc, "Soil organic matter")
+plot.dw(ac.yr, "Active Carbon")
+ggsave("figures/Figure 2/fig2_ac.tiff", width = 10, height = 10, units = "cm", dpi= "print")
+plot.dw(resp.yr, "Respiration")
+ggsave("figures/Figure 2/fig2_resp.tiff", width = 10, height = 10, units = "cm", dpi= "print")
+plot.dw(as.yr, "Aggregate Stability")
+ggsave("figures/Figure 2/fig2_as.tiff", width = 10, height = 10, units = "cm", dpi= "print")
+plot.dw(som.yr, "Soil organic matter")
+ggsave("figures/Figure 2/fig2_som.tiff", width = 10, height = 10, units = "cm", dpi= "print")
 
-
-#### Figure S4 ####
+#### Figure 3 ####
 # Labels for y-axis
 pred.labs <- c(
-  c.AMS = "Treatment (1/0)",
-  s.yr = "Year of sample",
-  s.yrsInvolved = "Number of years in project",
-  c.Soy = "Soy (1/0)",
-  s.clay = "Clay",
-  s.silt = "Silt",
-  `c.AMS:s.yr` = "Interaction of treatment and year"
+  CC = "Cover crop\n(Yes/No)",
+  `as.numeric(smpl_yr)` = "Year",
+  yrsTrt = "Years of cover crops",
+  `as.numeric(soil_texture_clay)` = "Clay\n(%)",
+  `as.numeric(soil_texture_silt)` = "Silt\n(%)",
+  `CC:yrsTrt` = "Cover crop x\nYears of cover crops"
 )
 
 #### Aggregate stability ####
-as.plot <- tidy(as.cc.all) %>%
+as.plot <- tidy(as) %>%
   relabel_predictors(pred.labs) %>%
   slice(1:7) %>%
   filter(term != "(Intercept)",
@@ -71,15 +78,16 @@ as.plot <- tidy(as.cc.all) %>%
 dwplot(as.plot,
        vline = geom_vline(xintercept = 0, colour = "#7e6a65", linetype = 2)
 ) + 
-  xlab("\nCoefficient Estimate") + ylab("") +
+  xlab("\nCoefficient estimate") + ylab("") +
   ggtitle("Aggregate stability") +
   scale_color_manual(values=c("#00703c")) +
   theme_classic() + 
   theme(plot.title = element_text(face="bold"),
         legend.position = "none")
+ggsave("figures/Figure S4/figs4_as.tiff", width = 15, height = 10, units = "cm", dpi= "print")
 
 #### Active Carbon ####
-ac.plot <- tidy(ac.cc.all) %>%
+ac.plot <- tidy(ac) %>%
   relabel_predictors(pred.labs) %>%
   slice(1:7) %>%
   filter(term != "(Intercept)",
@@ -94,9 +102,10 @@ dwplot(ac.plot,
   theme_classic() + 
   theme(plot.title = element_text(face="bold"),
         legend.position = "none")
+ggsave("figures/Figure S4/figs4_ac.tiff", width = 15, height = 10, units = "cm", dpi= "print")
 
 #### Water holding capacity ####
-whc.plot <- tidy(whc.cc.all) %>%
+whc.plot <- tidy(whc) %>%
   relabel_predictors(pred.labs) %>%
   slice(1:7) %>%
   filter(term != "(Intercept)",
@@ -111,9 +120,10 @@ dwplot(whc.plot,
   theme_classic() + 
   theme(plot.title = element_text(face="bold"),
         legend.position = "none")
+ggsave("figures/Figure S4/figs4_whc.tiff", width = 15, height = 10, units = "cm", dpi= "print")
 
 #### Protein ####
-pro.plot <- tidy(pro.cc.all) %>%
+pro.plot <- tidy(pro) %>%
   relabel_predictors(pred.labs) %>%
   slice(1:7) %>%
   filter(term != "(Intercept)",
@@ -128,9 +138,10 @@ dwplot(pro.plot,
   theme_classic() + 
   theme(plot.title = element_text(face="bold"),
         legend.position = "none")
+ggsave("figures/Figure S4/figs4_pro.tiff", width = 15, height = 10, units = "cm", dpi= "print")
 
 #### Respiration ####
-resp.plot <- tidy(resp.cc.all) %>%
+resp.plot <- tidy(resp) %>%
   relabel_predictors(pred.labs) %>%
   slice(1:7) %>%
   filter(term != "(Intercept)",
@@ -145,9 +156,10 @@ dwplot(resp.plot,
   theme_classic() + 
   theme(plot.title = element_text(face="bold"),
         legend.position = "none")
+ggsave("figures/Figure S4/figs4_resp.tiff", width = 15, height = 10, units = "cm", dpi= "print")
 
 #### Soil organic matter ####
-som.plot <- tidy(som.cc.all) %>%
+som.plot <- tidy(som) %>%
   relabel_predictors(pred.labs) %>%
   slice(1:7) %>%
   filter(term != "(Intercept)",
@@ -162,6 +174,58 @@ dwplot(som.plot,
   theme_classic() + 
   theme(plot.title = element_text(face="bold"),
         legend.position = "none")
+ggsave("figures/Figure S4/figs4_som.tiff", width = 15, height = 10, units = "cm", dpi= "print")
+
+
+## Figure 4 ##
+ggplot(final %>% filter(`Cover Crop`=="Yes"), aes(x=as.diff)) + 
+  geom_density(color="#00703c", fill="#49a942", size=.7, alpha=0.5) + 
+  geom_vline(xintercept=0, linetype="dotted", size=0.5) + 
+  ylab("Density\n") + xlab("\nAggregate stability") + theme_classic()
+ggsave("figures/Figure 4/fig4_as.tiff", width = 15, height = 10, units = "cm", dpi= "print")
+
+ggplot(final %>% filter(`Cover Crop`=="Yes"), aes(x=ac.diff)) + 
+  geom_density(color="#00703c", fill="#49a942", size=.7, alpha=0.5) + 
+  geom_vline(xintercept=0, linetype="dotted", size=0.5) + 
+  ylab("Density\n") + xlab("\nActive carbon") + theme_classic()
+ggsave("figures/Figure 4/fig4_ac.tiff", width = 15, height = 10, units = "cm", dpi= "print")
+
+ggplot(final %>% filter(`Cover Crop`=="Yes"), aes(x=pro.diff)) + 
+  geom_density(color="#00703c", fill="#49a942", size=.7, alpha=0.5) + 
+  geom_vline(xintercept=0, linetype="dotted", size=0.5) + 
+  ylab("Density\n") + xlab("\nACE soil protein index") + theme_classic()
+ggsave("figures/Figure 4/fig4_pro.tiff", width = 15, height = 10, units = "cm", dpi= "print")
+
+ggplot(final %>% filter(`Cover Crop`=="Yes"), aes(x=resp.diff)) + 
+  geom_density(color="#00703c", fill="#49a942", size=.7, alpha=0.5) + 
+  geom_vline(xintercept=0, linetype="dotted", size=0.5) + 
+  ylab("Density\n") + xlab("\nRespiration") + theme_classic()
+ggsave("figures/Figure 4/fig4_resp.tiff", width = 15, height = 10, units = "cm", dpi= "print")
+
+ggplot(final %>% filter(`Cover Crop`=="Yes"), aes(x=whc.diff)) + 
+  geom_density(color="#00703c", fill="#49a942", size=.7, alpha=0.5) + 
+  geom_vline(xintercept=0, linetype="dotted", size=0.5) + 
+  ylab("Density\n") + xlab("Available water capacity") + theme_classic()
+ggsave("figures/Figure 4/fig4_whc.tiff", width = 15, height = 10, units = "cm", dpi= "print")
+
+ggplot(final %>% filter(`Cover Crop`=="Yes"), aes(x=som.diff)) + 
+  geom_density(color="#00703c", fill="#49a942", size=.7, alpha=0.5) + 
+  geom_vline(xintercept=0, linetype="dotted", size=0.5) + 
+  ylab("Density\n") + xlab("Organic matter") + theme_classic()
+ggsave("figures/Figure 4/fig4_som.tiff", width = 15, height = 10, units = "cm", dpi= "print")
+
+
+## Figure 5 ##
+
+interactions::interact_plot(ac, pred=yrsTrt, modx=`Cover Crop`,x.label = "\nYears in the Soil Health Partnership", 
+                            y.label = "Active Carbon\n", colors = 'Set1', partial.residuals=T) + theme_classic()
+ggsave("figures/Figure 4/fig4_ac.tiff", width = 15, height = 10, units = "cm", dpi= "print")
+interactions::interact_plot(as, pred=yrsTrt, modx=`Cover Crop`,x.label = "\nYears in the Soil Health Partnership", 
+                            y.label = "Organic matter\n", colors = 'Set1') + theme_classic()
+interactions::interact_plot(pro, pred=yrsTrt, modx=`Cover Crop`,x.label = "\nYears in the Soil Health Partnership", 
+                            y.label = "Organic matter\n", colors = 'Set1') + theme_classic()
+interactions::interact_plot(som, pred=yrsTrt, modx=`Cover Crop`,x.label = "\nYears in the Soil Health Partnership", 
+                            y.label = "Organic matter\n", colors = 'Set1') + theme_classic()
 
 
 

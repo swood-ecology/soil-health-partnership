@@ -48,8 +48,8 @@ bc.join <- bc.join %>%
   )
 
 # Fit model for prior estimate
-lmer(log(som) ~ s.text + (1|state_code), data=bc.join) %>%
+lmer(som ~ s.text + (1|state_code), data=bc.join) %>%
   summary()
-## Prior: 0.00133 (0.000221 = SD) 
+## Prior: 0.00347 (0.0004 = SD) 
 
   

@@ -9,50 +9,67 @@ load("shp-data.RData")
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
 
-# Standardize and center data
-data.sub.std <- data.sub %>%
+# Create dummy
+final <- final %>%
   mutate(
-    c.AMS = treat_final_AMS - mean(treat_final_AMS),
-    c.SC = lagCrop_SC - mean(lagCrop_SC),
-    c.SB = lagCrop_SB - mean(lagCrop_SB),
-    c.W = lagCrop_W - mean(lagCrop_W),
-    c.Soy = lagCropCat_Soy - mean(lagCropCat_Soy),
-    c.Wheat = lagCropCat_Wheat - mean(lagCropCat_Wheat),
-    s.yr = (year - mean(year))/2*sd(year),
-    s.yrsInvolved = (YrTrt - mean(YrTrt)) / 2 * sd(YrTrt),
-    s.clay = (Clay - mean(Clay))/2*sd(Clay),
-    s.silt = (Silt - mean(Silt))/2*sd(Silt),
-    trtYrs = treat_final_AMS * year,
-    s.trtYrs = (trtYrs - mean(trtYrs))/2*sd(trtYrs),
-    farm = field_name
+    CC = ifelse(`Cover Crop`=="Yes",1,0),
   )
 
-# Subset to cover crops
-data.sub.cc <- data.sub.std %>%
-  filter(TrtType == "Cover" | TrtType == "Cover/TILL")
+# Standardize and center data
+final <- final %>%
+  mutate(
+    smpl_yr = as.numeric(smpl_yr),
+    soil_texture_clay = as.numeric(soil_texture_clay),
+    soil_texture_silt = as.numeric(soil_texture_silt),
+    TrtYrs = CC * yrsTrt
+  )
 
 # List data for Stan model
-som.cc.qr.list <- list(
+model.data <- list(
   ## Data dimensions
-  N=nrow(data.sub.cc),
-  K=7,
-  J=length(unique(as.factor(data.sub.cc$farm))),
+  N=nrow(final),
+  K=6,
+  J=length(unique(as.factor(final$IDtoUse))),
   ## Data
-  y=data.sub.cc$som.final,
-  x=data.sub.cc[,c('c.AMS','s.yr','s.yrsInvolved','s.trtYrs','c.Soy','s.clay','s.silt')],
+  y=final$final_OM,
+  x=final[,c('CC','smpl_yr','yrsTrt','TrtYrs','soil_texture_clay','soil_texture_silt')],
   ## Random effect
-  farm=as.numeric(as.factor(data.sub.cc$farm))
+  farm=as.numeric(as.factor(final$IDtoUse))
+)
+
+model.data.2 <- list(
+  ## Data dimensions
+  N=nrow(final),
+  K=6,
+  J=length(unique(as.factor(final$IDtoUse))),
+  ## Data
+  y=final$final_OM,
+  trt=final$CC,
+  yrs=final$smpl_yr,
+  yrsInv=final$yrsTrt,
+  trtYrs=final$TrtYrs,
+  clay=final$soil_texture_clay,
+  silt=final$soil_texture_silt,
+  ## Random effect
+  farm=as.numeric(as.factor(final$IDtoUse))
 )
 
 ## Prior on clay for logged relationship: 0.001 (0.0002 = SD)
 som.cc.qr <- stan(file = "code/stan/model_re_qr.stan",
-               data = som.cc.qr.list,
-               iter = 4000,
+               data = model.data,
+               iter = 5000,
                control=list(max_treedepth=15),
-               chains = 4) 
+               chains = 3)
 
-summary(som.cc.qr,pars=c('betaTrt','betaYrs','betaYrsInv','betaTrtYrs','betaSoy','betaClay','betaSilt'))
-print(som.cc.qr,pars=c('betaTrt','betaYrs','betaYrsInv','betaTrtYrs','betaSoy','betaClay','betaSilt'))
+som.cc <- stan(file = "code/stan/model_re.stan",
+                  data = model.data.2,
+                  iter = 5000,
+                  control=list(max_treedepth=15),
+                  chains = 4)
+
+
+summary(som.cc,pars=c('betaTrt','betaYrs','betaYrsInv','betaTrtYrs','betaClay','betaSilt'))
+print(som.cc,pars=c('betaTrt','betaYrs','betaYrsInv','betaTrtYrs','betaClay','betaSilt'))
 
 rm(data.2019); rm(data.diff); rm(data.last_yr); rm(data.sub); rm(data.sub.cc)
 rm(data.sub.std); rm(data); rm(data.2018.new)

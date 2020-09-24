@@ -25,7 +25,6 @@ parameters  {
   real betaYrs;
   real betaYrsInv;
   real betaTrtYrs;
-  real betaSoy;
   real betaClay;
   real betaSilt;
   real mu_a;
@@ -38,8 +37,7 @@ model {
   betaYrs ~ normal(0,10);
   betaYrsInv ~ normal(0,10);
   betaTrtYrs ~ normal(0,10);
-  betaSoy ~ normal(0,10);
-  betaClay ~ normal(0.00133,0.0005);
+  betaClay ~ normal(0.00347,0.0008);
   betaSilt ~ normal(0,10);
 
   mu_a ~ normal(0,10);
@@ -51,12 +49,12 @@ model {
 
   // Run model
     for(n in 1:N)
-      y[n] ~ lognormal(Q_ast[n,1]*betaTrt + Q_ast[n,2]*betaYrs + Q_ast[n,3]*betaYrsInv + Q_ast[n,4]*betaTrtYrs + Q_ast[n,5]*betaSoy + Q_ast[n,6]*betaClay + Q_ast[n,7]*betaSilt + alpha[farm[n]], sigma);
+      y[n] ~ normal(Q_ast[n,1]*betaTrt + Q_ast[n,2]*betaYrs + Q_ast[n,3]*betaYrsInv + Q_ast[n,4]*betaTrtYrs + Q_ast[n,5]*betaClay + Q_ast[n,6]*betaSilt + alpha[farm[n]], sigma);
 }
 generated quantities {
   vector[N] y_tilde; // Vector for predicted data
 
   // Predict data from model parameters
   for(n in 1:N)
-    y_tilde[n] = lognormal_rng(Q_ast[n,1]*betaTrt + Q_ast[n,2]*betaYrs + Q_ast[n,3]*betaYrsInv + Q_ast[n,4]*betaTrtYrs + Q_ast[n,5]*betaSoy + Q_ast[n,6]*betaClay + Q_ast[n,7]*betaSilt + alpha[farm[n]], sigma);
+    y_tilde[n] = normal_rng(Q_ast[n,1]*betaTrt + Q_ast[n,2]*betaYrs + Q_ast[n,3]*betaYrsInv + Q_ast[n,4]*betaTrtYrs + Q_ast[n,5]*betaClay + Q_ast[n,6]*betaSilt + alpha[farm[n]], sigma);
 }
