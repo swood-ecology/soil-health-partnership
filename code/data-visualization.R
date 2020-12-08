@@ -64,10 +64,10 @@ ggsave("figures/Figure 3/fig3_som.tiff", width = 7, height = 7, units = "cm", dp
 pred.labs <- c(
   CC = "Cover crop\n(Yes/No)",
   `as.numeric(smpl_yr)` = "Year",
-  yrsTrt = "Years of cover crops",
+  yrsTrt = "Yrs. of cover crop",
   `as.numeric(soil_texture_clay)` = "Clay\n(%)",
   `as.numeric(soil_texture_silt)` = "Silt\n(%)",
-  `CC:yrsTrt` = "Cover crop x\nYears of cover crops"
+  `CC:yrsTrt` = "Cover crop x\nYrs. of cover crop"
 )
 
 #### Aggregate stability ####
@@ -87,7 +87,10 @@ dwplot(as.plot,
   scale_color_manual(values=c("#00703c")) +
   theme_classic() + 
   theme(plot.title = element_text(face="bold"),
-        legend.position = "none")
+        legend.position = "none",
+        axis.text.x = element_text(size=10),
+        axis.text.y = element_text(size=10),
+        axis.title.x = element_text(size=12))
 ggsave("figures/Figure 4/fig4_as.tiff", width = 10, height = 8, units = "cm", dpi= "print")
 
 #### Active Carbon ####
@@ -107,7 +110,10 @@ dwplot(ac.plot,
   scale_color_manual(values=c("#00703c")) +
   theme_classic() + 
   theme(plot.title = element_text(face="bold"),
-        legend.position = "none")
+        legend.position = "none",
+        axis.text.x = element_text(size=10),
+        axis.text.y = element_text(size=10),
+        axis.title.x = element_text(size=12))
 ggsave("figures/Figure 4/fig4_ac.tiff", width = 10, height = 8, units = "cm", dpi= "print")
 
 #### Water holding capacity ####
@@ -127,7 +133,10 @@ dwplot(whc.plot,
   scale_color_manual(values=c("#00703c")) +
   theme_classic() + 
   theme(plot.title = element_text(face="bold"),
-        legend.position = "none")
+        legend.position = "none",
+        axis.text.x = element_text(size=10),
+        axis.text.y = element_text(size=10),
+        axis.title.x = element_text(size=12))
 ggsave("figures/Figure 4/fig4_whc.tiff", width = 10, height = 8, units = "cm", dpi= "print")
 
 #### Protein ####
@@ -147,7 +156,10 @@ dwplot(pro.plot,
   scale_color_manual(values=c("#00703c")) +
   theme_classic() + 
   theme(plot.title = element_text(face="bold"),
-        legend.position = "none")
+        legend.position = "none",
+        axis.text.x = element_text(size=10),
+        axis.text.y = element_text(size=10),
+        axis.title.x = element_text(size=12))
 ggsave("figures/Figure 4/fig4_pro.tiff", width = 10, height = 8, units = "cm", dpi= "print")
 
 #### Respiration ####
@@ -167,7 +179,10 @@ dwplot(resp.plot,
   scale_color_manual(values=c("#00703c")) +
   theme_classic() + 
   theme(plot.title = element_text(face="bold"),
-        legend.position = "none")
+        legend.position = "none",
+        axis.text.x = element_text(size=10),
+        axis.text.y = element_text(size=10),
+        axis.title.x = element_text(size=12))
 ggsave("figures/Figure 4/fig4_resp.tiff", width = 10, height = 8, units = "cm", dpi= "print")
 
 #### Soil organic matter ####
@@ -187,7 +202,10 @@ dwplot(som.plot,
   scale_color_manual(values=c("#00703c")) +
   theme_classic() + 
   theme(plot.title = element_text(face="bold"),
-        legend.position = "none")
+        legend.position = "none",
+        axis.text.x = element_text(size=10),
+        axis.text.y = element_text(size=10),
+        axis.title.x = element_text(size=12))
 ggsave("figures/Figure 4/fig4_som.tiff", width = 10, height = 8, units = "cm", dpi= "print")
 
 
