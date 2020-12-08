@@ -127,8 +127,8 @@ for(i in 2015:2019){
   )
 }
 
-ac.yr[[2019]] %>% r2()
-ac.yr[[2019]] %>% summary()
+ac.yr[[2015]] %>% r2()
+ac.yr[[2015]] %>% summary()
 ac.yr[[2015]] %>% check_model()
 
 #### 2b. Aggregate Stability ####
@@ -141,8 +141,8 @@ for(i in 2015:2019){
   )
 }
 
-as.yr[[2019]] %>% r2()
-as.yr[[2019]] %>% summary()
+as.yr[[2015]] %>% r2()
+as.yr[[2015]] %>% summary()
 as.yr[[2015]] %>% check_model()
 
 #### 2c. Protein #####
@@ -156,8 +156,8 @@ for(i in 2015:2019){
   ) 
 }
 
-pro.yr[[2017]] %>% r2()
-pro.yr[[2017]] %>% summary()
+pro.yr[[2015]] %>% r2()
+pro.yr[[2015]] %>% summary()
 pro.yr[[2015]] %>% check_model()
 
 #### 2d. Respiration ####
@@ -170,8 +170,8 @@ for(i in 2015:2019){
   ) 
 }
 
-resp.yr[[2018]] %>% r2()
-resp.yr[[2019]] %>% summary()
+resp.yr[[2015]] %>% r2()
+resp.yr[[2015]] %>% summary()
 resp.yr[[2015]] %>% check_model()
 
 
@@ -184,7 +184,7 @@ for(i in 2015:2019){
                        filter(smpl_yr==i)
   ) 
 }
-whc.yr[[2019]] %>% r2()
+whc.yr[[2015]] %>% r2()
 whc.yr[[2015]] %>% summary()
 whc.yr[[2015]] %>% check_model()
 
@@ -192,14 +192,14 @@ whc.yr[[2015]] %>% check_model()
 #### 2f. Soil organic matter ####
 som.yr <- list()
 for(i in 2015:2019){
-  som.yr[[i]] <- lmer(log(final_OM) ~ CC + yrsTrt + as.numeric(soil_texture_clay) + 
+  som.yr[[i]] <- lmer(final_OM ~ CC + yrsTrt + as.numeric(soil_texture_clay) + 
                         as.numeric(soil_texture_silt) + (1|IDtoUse),
                       data = final %>%
                         filter(smpl_yr==i)
   )
 }
-som.yr[[2019]] %>% r2()
-som.yr[[2019]] %>% summary()
+som.yr[[2015]] %>% r2()
+som.yr[[2015]] %>% summary()
 som.yr[[2015]] %>% check_model()
 
 

@@ -8,6 +8,7 @@
 library(tidyverse)    # General manipulation and pipe operators
 library(readxl)       # For reading in Excel data
 
+setwd("/Users/stephen.wood/Box Sync/Work/Code/shp/")
 
 # Read data
 soil <- read_excel("raw-data/data-sep2020/Cornell_20200915.xlsx")
