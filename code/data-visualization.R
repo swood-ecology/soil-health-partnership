@@ -104,8 +104,6 @@ dwplot(ac.plot,
        vline = geom_vline(xintercept = 0, colour = "#7e6a65", linetype = 2)
 ) + 
   xlab("\nCoefficient Estimate") + ylab("") +
-  scale_x_continuous(
-    labels = scales::number_format(accuracy = 0.01)) +
   ggtitle("Active carbon") +
   scale_color_manual(values=c("#00703c")) +
   theme_classic() + 
