@@ -34,6 +34,8 @@ plot.dw <- function(model.data,title){
   }
 
   dotwhisker::dwplot(x) + theme_classic() + ggtitle(title) +
+    scale_x_continuous(
+      labels = scales::number_format(accuracy = 0.01)) +
     scale_color_manual(values=c("#00703c","#23487a","#90214a","#f3901d","#49a942"),
                        name="Year",
                        breaks=c("2019","2018","2017","2016","2015")) +
@@ -41,7 +43,7 @@ plot.dw <- function(model.data,title){
     geom_vline(xintercept=0,linetype="dotted") +
     theme(
       axis.text.y = element_blank(),
-      axis.text.x = element_text(size=12),
+      axis.text.x = element_text(size=11),
       axis.title.y = element_text(size=13),
       axis.title.x = element_text(size=13),
       legend.text = element_text(size = 11)
@@ -79,6 +81,8 @@ dwplot(as.plot,
        vline = geom_vline(xintercept = 0, colour = "#7e6a65", linetype = 2)
 ) + 
   xlab("\nCoefficient estimate") + ylab("") +
+  scale_x_continuous(
+    labels = scales::number_format(accuracy = 0.01)) +
   ggtitle("Aggregate stability") +
   scale_color_manual(values=c("#00703c")) +
   theme_classic() + 
@@ -97,6 +101,8 @@ dwplot(ac.plot,
        vline = geom_vline(xintercept = 0, colour = "#7e6a65", linetype = 2)
 ) + 
   xlab("\nCoefficient Estimate") + ylab("") +
+  scale_x_continuous(
+    labels = scales::number_format(accuracy = 0.01)) +
   ggtitle("Active carbon") +
   scale_color_manual(values=c("#00703c")) +
   theme_classic() + 
@@ -115,6 +121,8 @@ dwplot(whc.plot,
        vline = geom_vline(xintercept = 0, colour = "#7e6a65", linetype = 2)
 ) + 
   xlab("\nCoefficient Estimate") + ylab("") +
+  scale_x_continuous(
+    labels = scales::number_format(accuracy = 0.01)) +
   ggtitle("Water holding capacity") +
   scale_color_manual(values=c("#00703c")) +
   theme_classic() + 
@@ -133,6 +141,8 @@ dwplot(pro.plot,
        vline = geom_vline(xintercept = 0, colour = "#7e6a65", linetype = 2)
 ) + 
   xlab("\nCoefficient Estimate") + ylab("") +
+  scale_x_continuous(
+    labels = scales::number_format(accuracy = 0.01)) +
   ggtitle("ACE Soil Protein Index") +
   scale_color_manual(values=c("#00703c")) +
   theme_classic() + 
@@ -151,6 +161,8 @@ dwplot(resp.plot,
        vline = geom_vline(xintercept = 0, colour = "#7e6a65", linetype = 2)
 ) + 
   xlab("\nCoefficient Estimate") + ylab("") +
+  scale_x_continuous(
+    labels = scales::number_format(accuracy = 0.01)) +
   ggtitle("Respiration") +
   scale_color_manual(values=c("#00703c")) +
   theme_classic() + 
@@ -169,6 +181,8 @@ dwplot(som.plot,
        vline = geom_vline(xintercept = 0, colour = "#7e6a65", linetype = 2)
 ) + 
   xlab("\nCoefficient Estimate") + ylab("") +
+  scale_x_continuous(
+    labels = scales::number_format(accuracy = 0.01)) +
   ggtitle("Soil organic matter") +
   scale_color_manual(values=c("#00703c")) +
   theme_classic() + 
